@@ -13,3 +13,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+egui = "^0.30.0"
+eframe = "^0.30.0"
+egui_extras = { version = "^0.30.0", features = ["all_loaders"] }
+rodio = "^0.20.1"
+hound = "^3.5.1"
+anyhow = "^1.0.95"
+screen_size = "^0.1.0"
+image = "^0.25.5"
