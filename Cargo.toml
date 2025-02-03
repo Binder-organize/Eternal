@@ -1,0 +1,15 @@
+[package]
+name = "Eternal"
+description = "A modern terminal developed using Rust. / 使用Rust开发的现代终端。"
+repository = "https://github.com/Binder-organize/Eternal"
+authors = [
+    "Gavin Zheng <gav.zheng@outlook.com>",
+    "Cheple Bob <Cheple_Bob@outlook.com>",
+]
+license = "MIT"
+readme = "README.md"
+keywords = ["terminal", "rust"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
