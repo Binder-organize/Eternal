@@ -133,7 +133,7 @@ impl MyEguiApp {
         subject_name: String,
         id: usize,
     ) {
-        println!("已成功创建{}{},id为{}", subject , subject_name, id);
+        println!("已成功创建{}{},id为{}", subject, subject_name, id);
     }
 
     pub fn update_screen_size(&mut self, ctx: &egui::Context) {

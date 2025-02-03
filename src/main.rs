@@ -9,7 +9,6 @@ use function::MyEguiApp;
 use function::Size;
 
 fn main() {
-
     // // 创建 MyEguiApp 实例
     let mut screen_size = Size::new();
     screen_size.calculate();
