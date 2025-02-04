@@ -100,6 +100,7 @@ impl function::MyEguiApp {
             home_dir
                 .map(|mut home| {
                     let relative = path_str.trim_start_matches('~');
+                    let relative = relative.trim_start_matches('/');
                     home.push(relative);
                     home.to_str().unwrap_or(path_str).to_string()
                 })
