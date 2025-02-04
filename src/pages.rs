@@ -1,103 +1,58 @@
 use crate::function;
 use eframe::egui::{self};
+use egui::Key;
 use function::MyEguiApp;
-use function::Page;
+use std::env;
 
 impl eframe::App for MyEguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        match self.page {
-            Page::InitialFeature => {
-                self.add_image(
-                    true,
-                    "Example1",
-                    [600_f32, 600_f32],
-                    [50_f32, 50_f32],
-                    [0, 1],
-                    [1, 2],
-                    [false, true, true, false],
-                );
-                self.add_image(
-                    false,
-                    "Example2",
-                    [400_f32, 400_f32],
-                    [70_f32, 70_f32],
-                    [1, 2],
-                    [1, 2],
-                    [true, true, true, true],
-                );
-                self.add_custom_text(
-                    true,
-                    "Example3",
-                    [0.0, 0.0],
-                    24.0,
-                    [0, 0, 0, 255],
-                    "这是一段以左上角排版，圆润黄色背景，黑色文本与限定长度的RustConstructor自定义文本！",
-                    [true, true, false, false],
-                    100.0,
-                    true,
-                    [255, 255, 0],
-                    10.0,
-                    [0, 1],
-                    [0, 1],
-                );
-                self.page = Page::InitialHome;
-            }
-            Page::InitialHome => {
-                self.add_custom_text(
-                    true,
-                    "Title",
-                    [0.0, 0.0],
-                    48.0,
-                    [127, 127, 127, 255],
-                    "Rust Constructor v0.1.0",
-                    [false, true, true, false],
-                    1000.0,
-                    false,
-                    [255, 255, 0],
-                    10.0,
-                    [1, 2],
-                    [1, 4],
-                );
-                self.page = Page::Home;
-            }
-            Page::Feature => {
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    self.update_screen_size(ctx);
-                    self.load_image(
-                        ctx,
-                        include_bytes!("../assets/images/SampleImage.png"),
-                        1,
-                        ui,
-                    );
-                    self.load_image(
-                        ctx,
-                        include_bytes!("../assets/images/SampleImage.png"),
-                        2,
-                        ui,
-                    );
-                    self.custom_text(ui, 1);
-                });
-            }
+        egui::CentralPanel::default().show(ctx, |ui| {
+            // 使用自定义样式显示输入框
+            egui::ScrollArea::vertical()
+                .enable_scrolling(true)
+                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded)
+                .show(ui, |ui| {
+                    ui.set_width(ui.available_width()); // 设置宽度为可用宽度
+                    ui.set_height(ui.available_height()); // 设置高度为可用高度
+                    ui.vertical(|ui| {
+                        ui.colored_label(
+                            egui::Color32::from_rgba_premultiplied(0, 0, 0, 255),
+                            &*self.strs,
+                        );
+                        ui.add_space(-20.0);
+                        ui.horizontal(|ui| {
+                            let mut prompt_text = "[".to_string();
+                            let current_dir = env::current_dir().unwrap_or_else(|e| {
+                                eprintln!("Error getting current directory: {}", e);
+                                std::path::PathBuf::from("")
+                            });
 
-            Page::Home => {
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    self.update_screen_size(ctx);
-                    self.custom_text(ui, 2);
+                            let current_path = self.format_path(&current_dir);
+                            prompt_text += current_path.as_str();
+                            prompt_text += "]> ";
+                            ui.colored_label(
+                                egui::Color32::from_rgba_premultiplied(0, 0, 0, 255),
+                                &prompt_text,
+                            );
+                            ui.add_space(-10.0);
+                            ui.add(
+                                egui::TextEdit::multiline(&mut self.input_strs)
+                                    .frame(false)
+                                    .desired_width(f32::INFINITY)
+                                    .text_color(egui::Color32::from_rgba_premultiplied(0, 0, 0, 255))
+                                    .hint_text("Get started..."), // 提示文本
+                            );
+                            if ui.input(|i| i.key_pressed(Key::Enter)) {
+                                if !self.input_strs.is_empty() {
+                                    self.strs += &*prompt_text;
+                                    self.strs += &self.input_strs;
+                                    self.shell(self.input_strs.to_string());
+                                    self.input_strs.clear();
+                                }
+                            }
+                        });
+                    });
                 });
-                egui::SidePanel::right("更新内容").show(ctx, |ui| {
-                    ui.heading("Rust Constructor v0.1.0更新内容：");
-                    ui.label("1.构建最基础的框架\n2.加入图片：包含网格式定位，修改坐标对应显示位置\n3.加入自定义文本：可修改颜色，包含网格式定位，纯色背景（可添加圆滑边&修改颜色），修改坐标对应显示位置等功能\n4.网格式定位：以[x, y]形式表示，将长/宽除以y并乘x，可以在任何窗口尺寸下完美适配\n5.其他功能：wav播放器，创建文本/图片成功播报器等");
-                });
-            } // _ => {
-              // }
-        }
-        egui::TopBottomPanel::bottom("Console").show(ctx, |ui| {
-            if ui.button("主页").clicked() {
-                self.page = Page::Home;
-            }
-            if ui.button("新特性").clicked() {
-                self.page = Page::Feature;
-            }
         });
     }
 }

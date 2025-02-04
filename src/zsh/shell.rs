@@ -1,26 +1,16 @@
+use crate::function;
+use std::process::exit;
 use std::{
     env,
-    io::{stdin, stdout, Write},
     process::{Child, Command, Stdio},
 };
 
-pub fn shell() {
-    loop {
-        let current_dir = match env::current_dir() {
-            Ok(path) => path,
-            Err(e) => {
-                eprintln!("Error getting current directory: {}", e);
-                continue;
-            }
-        };
-
-        let current_path = format_path(&current_dir);
-
-        print!("[{}] > ", current_path);
-        stdout().flush().unwrap();
-
-        let mut input = String::new();
-        stdin().read_line(&mut input).unwrap();
+impl function::MyEguiApp {
+    pub fn shell(&mut self, input: String) {
+        // 检查输入是否为空
+        if input.trim().is_empty() {
+            return;
+        }
 
         let mut commands = input.trim().split(" | ").peekable();
         let mut previous_command = None;
@@ -33,85 +23,98 @@ pub fn shell() {
             match command {
                 "cd" => {
                     let new_dir = args.next().unwrap_or("/");
-                    let root = process_path(new_dir);
+                    let root = self.process_path(new_dir);
 
                     if let Err(e) = env::set_current_dir(&root) {
-                        eprintln!("Error changing directory: {}", e);
+                        self.strs += &*format!("Error changing directory: {}\n", e);
                     }
 
                     previous_command = None;
                 }
-                "exit" => return,
+                "exit" => exit(0),
                 "clear" => {
-                    println!("\x1B[2J\x1B[1;1H");
+                    self.strs = String::new();
                     previous_command = None;
                 }
                 _ => {
-                    let stdin = previous_command.map_or(Stdio::inherit(), |output: Child| {
-                        Stdio::from(output.stdout.unwrap())
-                    });
+                    if !command.is_empty() {
+                        let stdin = previous_command.map_or(Stdio::inherit(), |output: Child| {
+                            Stdio::from(output.stdout.unwrap())
+                        });
 
-                    let stdout = if commands.peek().is_some() {
-                        Stdio::piped()
-                    } else {
-                        Stdio::inherit()
-                    };
+                        let stdout = if commands.peek().is_some() {
+                            Stdio::piped()
+                        } else {
+                            Stdio::piped() // 修改为 piped 以便捕获输出
+                        };
 
-                    match Command::new(command)
-                        .args(args)
-                        .stdin(stdin)
-                        .stdout(stdout)
-                        .spawn()
-                    {
-                        Ok(output) => previous_command = Some(output),
-                        Err(e) => {
-                            eprintln!("Command not found: {}", command);
-                            previous_command = None;
-                        }
-                    };
+                        let stderr = Stdio::piped(); // 捕获标准错误输出
+
+                        match Command::new(command)
+                            .args(args)
+                            .stdin(stdin)
+                            .stdout(stdout)
+                            .stderr(stderr) // 重定向标准错误输出到标准输出
+                            .spawn()
+                        {
+                            Ok(output) => previous_command = Some(output),
+                            Err(e) => {
+                                self.strs +=
+                                    &*format!("Command not found: {}\nError: {}\n", command, e);
+                                previous_command = None;
+                            }
+                        };
+                    }
                 }
             }
         }
 
-        if let Some(mut final_command) = previous_command {
-            match final_command.wait() {
-                Ok(_) => {}
-                Err(e) => eprintln!("Error executing command: {}", e),
+        if let Some(final_command) = previous_command {
+            match final_command.wait_with_output() {
+                Ok(output) => {
+                    if !output.stdout.is_empty() {
+                        self.strs += &*String::from_utf8_lossy(&output.stdout);
+                    }
+                    if !output.stderr.is_empty() {
+                        self.strs += &*String::from_utf8_lossy(&output.stderr);
+                    }
+                }
+                Err(e) => self.strs += &*format!("Error executing command: {}\n", e),
             }
         }
     }
-}
 
-pub fn format_path(path: &std::path::Path) -> String {
-    let home_dir = home_dir();
-    if let Some(home) = home_dir {
-        if let Ok(stripped) = path.strip_prefix(&home) {
-            return format!("~/{}", stripped.display());
+    pub fn format_path(&mut self, path: &std::path::Path) -> String {
+        let home_dir = self.home_dir();
+        if let Some(home) = home_dir {
+            if let Ok(stripped) = path.strip_prefix(&home) {
+                return format!("~/{}", stripped.display());
+            }
         }
+        path.display().to_string()
     }
-    path.display().to_string()
-}
 
-pub fn process_path(path_str: &str) -> std::path::PathBuf {
-    let path_str = if path_str.starts_with('~') {
-        let home_dir = home_dir();
-        home_dir
-            .map(|mut home| {
-                let relative = path_str.trim_start_matches('~');
-                home.push(relative);
-                home.to_str().unwrap_or(path_str).to_string()
-            })
-            .unwrap_or_else(|| path_str.to_string())
-    } else {
-        path_str.to_string()
-    };
+    pub fn process_path(&mut self, path_str: &str) -> std::path::PathBuf {
+        let path_str = if path_str.starts_with('~') {
+            let home_dir = self.home_dir();
+            home_dir
+                .map(|mut home| {
+                    let relative = path_str.trim_start_matches('~');
+                    home.push(relative);
+                    home.to_str().unwrap_or(path_str).to_string()
+                })
+                .unwrap_or_else(|| path_str.to_string())
+        } else {
+            path_str.to_string()
+        };
 
-    std::path::PathBuf::from(path_str)
-}
+        std::path::PathBuf::from(path_str)
+    }
 
-pub fn home_dir() -> Option<std::path::PathBuf> {
-    env::var("HOME")
-        .or_else(|_| env::var("USERPROFILE"))
-        .ok()
-        .map(|s| std::path::PathBuf::from(s))
+    pub fn home_dir(&mut self) -> Option<std::path::PathBuf> {
+        env::var("HOME")
+            .or_else(|_| env::var("USERPROFILE"))
+            .ok()
+            .map(|s| std::path::PathBuf::from(s))
+    }
 }

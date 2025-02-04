@@ -78,25 +78,19 @@ pub struct CustomText {
 }
 
 pub struct MyEguiApp {
-    pub page: Page,
     pub image: Vec<Image>,
     pub screen_size: Size,
     pub custom_text: Vec<CustomText>,
+    pub strs: String,
+    pub input_strs: String,
 }
 
-pub enum Page {
-    Feature,
-    InitialFeature,
-    Home,
-    InitialHome,
-}
-
+#[allow(dead_code)]
 impl MyEguiApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         load_fonts(&cc.egui_ctx);
         egui_extras::install_image_loaders(&cc.egui_ctx);
         Self {
-            page: Page::InitialFeature,
             image: vec![Image {
                 name: "Placeholder".to_string(),
                 image_texture: None,
@@ -124,6 +118,8 @@ impl MyEguiApp {
                 x_grid_locate_position: [0, 0],
                 y_grid_locate_position: [0, 0],
             }],
+            strs: String::new(),
+            input_strs: String::new(),
         }
     }
 
